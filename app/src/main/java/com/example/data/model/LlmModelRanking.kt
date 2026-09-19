@@ -1,0 +1,161 @@
+package com.example.data.model
+
+data class LlmModelRanking(
+    val rank: Int,
+    val modelName: String,
+    val provider: String,
+    val arenaElo: Int,
+    val mmluScore: Double,
+    val codingScore: Double,
+    val contextWindowTokens: String,
+    val costPerMillionInputTokens: Double,
+    val costPerMillionOutputTokens: Double,
+    val releaseDate: String,
+    val strengths: String,
+    val license: String
+) {
+    companion object {
+        val TOP_LLM_LEADERBOARD = listOf(
+            LlmModelRanking(
+                rank = 1,
+                modelName = "Gemini 1.5 Pro (Experimental)",
+                provider = "Google",
+                arenaElo = 1320,
+                mmluScore = 88.5,
+                codingScore = 91.2,
+                contextWindowTokens = "2,000,000",
+                costPerMillionInputTokens = 1.25,
+                costPerMillionOutputTokens = 5.00,
+                releaseDate = "Sep 2024",
+                strengths = "Massive 2M token context, multimodal video/audio comprehension & reasoning",
+                license = "Proprietary API"
+            ),
+            LlmModelRanking(
+                rank = 2,
+                modelName = "o1-preview (Reasoning)",
+                provider = "OpenAI",
+                arenaElo = 1335,
+                mmluScore = 90.8,
+                codingScore = 93.4,
+                contextWindowTokens = "128,000",
+                costPerMillionInputTokens = 15.00,
+                costPerMillionOutputTokens = 60.00,
+                releaseDate = "Sep 2024",
+                strengths = "Deep chain-of-thought planning, competitive math, physics & code generation",
+                license = "Proprietary API"
+            ),
+            LlmModelRanking(
+                rank = 3,
+                modelName = "Claude 3.5 Sonnet",
+                provider = "Anthropic",
+                arenaElo = 1290,
+                mmluScore = 88.7,
+                codingScore = 93.7,
+                contextWindowTokens = "200,000",
+                costPerMillionInputTokens = 3.00,
+                costPerMillionOutputTokens = 15.00,
+                releaseDate = "Jun 2024",
+                strengths = "Industry-best software engineering, nuanced writing & vision comprehension",
+                license = "Proprietary API"
+            ),
+            LlmModelRanking(
+                rank = 4,
+                modelName = "GPT-4o",
+                provider = "OpenAI",
+                arenaElo = 1285,
+                mmluScore = 87.2,
+                codingScore = 90.2,
+                contextWindowTokens = "128,000",
+                costPerMillionInputTokens = 2.50,
+                costPerMillionOutputTokens = 10.00,
+                releaseDate = "May 2024",
+                strengths = "Omni-modal speed, vision, structured JSON outputs & cost efficiency",
+                license = "Proprietary API"
+            ),
+            LlmModelRanking(
+                rank = 5,
+                modelName = "Llama 3.1 405B",
+                provider = "Meta AI",
+                arenaElo = 1265,
+                mmluScore = 88.6,
+                codingScore = 89.0,
+                contextWindowTokens = "128,000",
+                costPerMillionInputTokens = 2.00,
+                costPerMillionOutputTokens = 2.00,
+                releaseDate = "Jul 2024",
+                strengths = "Open weights, custom fine-tuning freedom, state-of-the-art multilingual",
+                license = "Open Weights (Llama 3.1)"
+            ),
+            LlmModelRanking(
+                rank = 6,
+                modelName = "Gemini 1.5 Flash",
+                provider = "Google",
+                arenaElo = 1245,
+                mmluScore = 81.5,
+                codingScore = 84.1,
+                contextWindowTokens = "1,000,000",
+                costPerMillionInputTokens = 0.075,
+                costPerMillionOutputTokens = 0.30,
+                releaseDate = "May 2024",
+                strengths = "Ultra-low cost, sub-second latency, 1M context high-throughput tasks",
+                license = "Proprietary API"
+            ),
+            LlmModelRanking(
+                rank = 7,
+                modelName = "Claude 3 Opus",
+                provider = "Anthropic",
+                arenaElo = 1250,
+                mmluScore = 86.8,
+                codingScore = 84.2,
+                contextWindowTokens = "200,000",
+                costPerMillionInputTokens = 15.00,
+                costPerMillionOutputTokens = 75.00,
+                releaseDate = "Mar 2024",
+                strengths = "High philosophical reasoning, extensive creative writing & scholarly analysis",
+                license = "Proprietary API"
+            ),
+            LlmModelRanking(
+                rank = 8,
+                modelName = "Mistral Large 2 (123B)",
+                provider = "Mistral AI",
+                arenaElo = 1240,
+                mmluScore = 84.0,
+                codingScore = 92.0,
+                contextWindowTokens = "128,000",
+                costPerMillionInputTokens = 2.00,
+                costPerMillionOutputTokens = 6.00,
+                releaseDate = "Jul 2024",
+                strengths = "European sovereignty, superior multilinguality & precise code reasoning",
+                license = "Mistral Research License"
+            ),
+            LlmModelRanking(
+                rank = 9,
+                modelName = "Qwen 2.5 72B Instruct",
+                provider = "Alibaba Cloud",
+                arenaElo = 1235,
+                mmluScore = 86.1,
+                codingScore = 87.5,
+                contextWindowTokens = "128,000",
+                costPerMillionInputTokens = 0.35,
+                costPerMillionOutputTokens = 0.70,
+                releaseDate = "Sep 2024",
+                strengths = "High math/coding benchmark density, open weights & enterprise flexibility",
+                license = "Apache 2.0"
+            ),
+            LlmModelRanking(
+                rank = 10,
+                modelName = "DeepSeek Coder V2 (236B)",
+                provider = "DeepSeek",
+                arenaElo = 1225,
+                mmluScore = 79.2,
+                codingScore = 90.2,
+                contextWindowTokens = "128,000",
+                costPerMillionInputTokens = 0.14,
+                costPerMillionOutputTokens = 0.28,
+                releaseDate = "Jun 2024",
+                strengths = "Specialized Mixture-of-Experts for software engineering and algorithms",
+                license = "Open Weights"
+            )
+        )
+    }
+}

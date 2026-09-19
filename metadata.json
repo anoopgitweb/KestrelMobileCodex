@@ -1,0 +1,6 @@
+{
+  "name": "AI News",
+  "description": "Enterprise AI intelligence, Work Accounts, and Advisory feeds with Supabase authentication, Admin access approvals, and Google Sheets integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

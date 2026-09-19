@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- News Document / Tablet Base (Inside 66dp zone: X 28-80, Y 26-82) -->
+    <path
+        android:fillColor="#E2E8F0"
+        android:pathData="M34,28 L70,28 C72.2,28 74,29.8 74,32 L74,76 C74,78.2 72.2,80 70,80 L34,80 C31.8,80 30,78.2 30,76 L30,32 C30,29.8 31.8,28 34,28 Z" />
+
+    <!-- Newspaper Header bar -->
+    <path
+        android:fillColor="#0284C7"
+        android:pathData="M34,28 L70,28 C72.2,28 74,29.8 74,32 L74,38 L30,38 L30,32 C30,29.8 31.8,28 34,28 Z" />
+
+    <!-- Header accent text lines -->
+    <path
+        android:fillColor="#BAE6FD"
+        android:pathData="M35,32 L52,32 A1.5,1.5 0 0 1 52,35 L35,35 A1.5,1.5 0 0 1 35,32 Z" />
+
+    <!-- Text line placeholders -->
+    <path
+        android:fillColor="#94A3B8"
+        android:pathData="M35,68 L58,68 A1.5,1.5 0 0 1 58,71 L35,71 A1.5,1.5 0 0 1 35,68 Z
+                         M35,73 L67,73 A1.5,1.5 0 0 1 67,76 L35,76 A1.5,1.5 0 0 1 35,73 Z" />
+
+    <!-- AI Neural Network Core Symbol over the news document -->
+    <!-- Central Node -->
+    <path
+        android:fillColor="#0284C7"
+        android:pathData="M52,51m-6.5,0a6.5,6.5 0 1,0 13,0a6.5,6.5 0 1,0 -13,0" />
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M52,51m-4.5,0a4.5,4.5 0 1,0 9,0a4.5,4.5 0 1,0 -9,0" />
+
+    <!-- Neural connection lines -->
+    <path
+        android:strokeColor="#0284C7"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M42,43 L48,48
+                         M62,43 L56,48
+                         M42,59 L48,54
+                         M62,59 L56,54
+                         M52,43 L52,47
+                         M52,55 L52,59" />
+
+    <!-- Satellite Nodes -->
+    <path
+        android:fillColor="#0EA5E9"
+        android:pathData="M41,43m-3,0a3,3 0 1,0 6,0a3,3 0 1,0 -6,0
+                         M63,43m-3,0a3,3 0 1,0 6,0a3,3 0 1,0 -6,0
+                         M41,59m-3,0a3,3 0 1,0 6,0a3,3 0 1,0 -6,0
+                         M63,59m-3,0a3,3 0 1,0 6,0a3,3 0 1,0 -6,0" />
+
+    <!-- Outer broadcast pulse accent -->
+    <path
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M69,45 C73,48 73,54 69,57
+                         M35,45 C31,48 31,54 35,57" />
+</vector>
