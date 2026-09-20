@@ -57,12 +57,8 @@ fun Fortune500View(
     companies: List<Fortune500Company>,
     searchQuery: String,
     onSearchChange: (String) -> Unit,
-    isExporting: Boolean,
-    onExportToSheets: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -97,7 +93,7 @@ fun Fortune500View(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Revenue, Market Cap & Financial Highlights",
+                                text = "All 500 companies • 2026 ranking • Updated ${Fortune500Company.DATA_AS_OF}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -105,61 +101,6 @@ fun Fortune500View(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = onExportToSheets,
-                        enabled = !isExporting,
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = GoogleSheetsGreen,
-                            contentColor = Color.White
-                        ),
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("export_fortune_500_sheets_button")
-                    ) {
-                        if (isExporting) {
-                            CircularProgressIndicator(
-                                color = Color.White,
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Exporting...", fontSize = 13.sp)
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.TableChart,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Save to 'Fortune 500' Sheet", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-
-                    OutlinedButton(
-                        onClick = {
-                            val tsv = buildString {
-                                appendLine("Rank\tCompany\tTicker\tSector\tRevenue (\$B)\tProfit (\$B)\tMarket Cap (\$B)\tCEO\tHeadquarters\tKey Highlight")
-                                for (c in companies) {
-                                    appendLine("${c.rank}\t${c.name}\t${c.ticker}\t${c.sector}\t${c.revenueBillions}\t${c.profitBillions}\t${c.marketCapBillions}\t${c.ceo}\t${c.headquarters}\t${c.keyHighlight}")
-                                }
-                            }
-                            copyTsv(context, tsv, "Fortune 500 data copied for Sheets!")
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.testTag("copy_fortune_500_tsv_button")
-                    ) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Copy TSV", fontSize = 13.sp)
-                    }
-                }
             }
         }
 
@@ -169,7 +110,7 @@ fun Fortune500View(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchChange,
-            placeholder = { Text("Filter by company, ticker, sector, or CEO...") },
+            placeholder = { Text("Filter all 500 companies...") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
@@ -213,12 +154,12 @@ fun FortuneCompanyCard(company: Fortune500Company) {
                     Surface(
                         shape = RoundedCornerShape(6.dp),
                         color = MaterialTheme.colorScheme.primaryContainer,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(24.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
-                                text = "#${company.rank}",
-                                style = MaterialTheme.typography.labelMedium,
+                                text = "${company.rank}",
+                                style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -232,77 +173,26 @@ fun FortuneCompanyCard(company: Fortune500Company) {
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "${company.ticker} • ${company.sector}",
+                            text = "Annual revenue: $${String.format("%,.1f", company.revenueBillions)}B",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                // Daily change pill
-                val isPositive = company.changePercent >= 0
                 Surface(
                     shape = RoundedCornerShape(6.dp),
-                    color = if (isPositive) Color(0xFFE6F4EA) else Color(0xFFFCE8E6)
+                    color = MaterialTheme.colorScheme.primaryContainer
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                    Text(
+                        text = "Verified",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isPositive) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                            contentDescription = null,
-                            tint = if (isPositive) GoogleSheetsGreen else Color(0xFFD93025),
-                            modifier = Modifier.size(12.dp)
-                        )
-                        Spacer(modifier = Modifier.width(2.dp))
-                        Text(
-                            text = "${if (isPositive) "+" else ""}${company.changePercent}%",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isPositive) GoogleSheetsGreen else Color(0xFFD93025)
-                        )
-                    }
+                    )
                 }
             }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Metrics Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text("Revenue", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$${company.revenueBillions}B", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                }
-                Column {
-                    Text("Net Profit", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$${company.profitBillions}B", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                }
-                Column {
-                    Text("Market Cap", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$${company.marketCapBillions}B", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "CEO: ${company.ceo} • HQ: ${company.headquarters}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = company.keyHighlight,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                lineHeight = 18.sp
-            )
         }
     }
 }

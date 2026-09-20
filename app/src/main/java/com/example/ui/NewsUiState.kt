@@ -60,6 +60,7 @@ data class NewsUiState(
 
     // Supabase Auth & Role-Based Access Control
     val isAuthenticated: Boolean = false,
+    val isPinUnlockAvailable: Boolean = false,
     val currentUserEmail: String = "",
     val currentUserRole: com.example.data.model.UserRole = com.example.data.model.UserRole.USER,
     val currentAccessStatus: com.example.data.model.AccessStatus = com.example.data.model.AccessStatus.NONE,

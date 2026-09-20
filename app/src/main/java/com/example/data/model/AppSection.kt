@@ -14,13 +14,13 @@ enum class AppSection(
     ),
     WORK_ACCOUNTS(
         id = "work_accounts",
-        title = "Work Accounts News",
+        title = "Work Accounts",
         subtitle = "Updates & news tailored to your enterprise work accounts",
         sheetTabName = "Work Accounts"
     ),
     ADVISORY_FIRMS(
         id = "advisory_firms",
-        title = "News from Advisory Firms",
+        title = "Advisor Insights",
         subtitle = "Analyst insights from Forrester, Everest, Gartner & McKinsey",
         sheetTabName = "Advisory Firms"
     ),
@@ -35,6 +35,12 @@ enum class AppSection(
         title = "LLM Rankings",
         subtitle = "Elo scores, MMLU benchmarks, latency, cost & leaderboard",
         sheetTabName = "LLM Rankings"
+    ),
+    LEARN(
+        id = "learn",
+        title = "Learn",
+        subtitle = "Practical AI explainers, playbooks, and discovery topics",
+        sheetTabName = "Learn"
     );
 
     companion object {

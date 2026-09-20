@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -42,12 +43,15 @@ import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Leaderboard
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
@@ -99,11 +103,14 @@ import com.example.ui.components.AppSectionNavigationBar
 import com.example.ui.components.ArticleDetailSheet
 import com.example.ui.components.Fortune500View
 import com.example.ui.components.LandingScreen
+import com.example.ui.components.LearnView
 import com.example.ui.components.LlmRankingsView
 import com.example.ui.components.LoginScreen
 import com.example.ui.components.ManageWorkAccountsDialog
 import com.example.ui.components.NewsCard
 import com.example.ui.components.SaveToSheetsDialog
+import com.example.ui.components.SectionFilterDropdown
+import com.example.ui.components.SettingsPreferencesDialog
 import com.example.ui.components.SupabaseConfigDialog
 import com.example.ui.components.TopicPicker
 import com.example.ui.components.WorkAccountsBar
@@ -139,9 +146,12 @@ fun NewsScreen(
             errorMessage = uiState.authErrorMessage,
             successMessage = uiState.authSuccessMessage,
             currentAccessStatus = uiState.currentAccessStatus,
-            onLogin = { email, pass ->
-                viewModel.loginWithSupabase(email, pass)
+            pinUnlockAvailable = uiState.isPinUnlockAvailable,
+            savedEmail = uiState.currentUserEmail,
+            onLogin = { email, pass, pin ->
+                viewModel.loginWithSupabase(email, pass, pin)
             },
+            onPinUnlock = { pin -> viewModel.unlockWithPin(pin) },
             onRequestAccess = { name, email, org, reason ->
                 viewModel.submitAccessRequest(name, email, org, reason)
             },
@@ -178,161 +188,34 @@ fun NewsScreen(
             ) {
                 TopAppBar(
                     title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier.size(34.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Psychology,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = if (uiState.isLandingScreenOpen) "Overview Hub" else uiState.currentSection.title,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                // Prominent IST Live Time Banner Pill
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(6.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.tertiary)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "$currentIstClock (IST)",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.tertiary,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            }
-                        }
+                        Text(
+                            text = "Kestrel Business Intelligence",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     },
                     actions = {
-                        // Hub / Landing Screen Button
                         IconButton(
-                            onClick = { viewModel.openLandingScreen() },
-                            modifier = Modifier.testTag("top_bar_landing_button")
+                            onClick = { viewModel.setSettingsPreferencesDialogOpen(true) },
+                            modifier = Modifier.testTag("top_bar_settings_button")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.GridView,
-                                contentDescription = "Overview Hub",
-                                tint = if (uiState.isLandingScreenOpen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-
-                        // Search Button
-                        IconButton(
-                            onClick = {
-                                isSearchActive = !isSearchActive
-                                if (!isSearchActive) viewModel.setSearchQuery("")
-                            },
-                            modifier = Modifier.testTag("top_bar_search_button")
-                        ) {
-                            Icon(
-                                imageVector = if (isSearchActive) Icons.Default.Close else Icons.Default.Search,
-                                contentDescription = "Search",
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings and preferences",
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
 
-                        // Bookmarks Button
-                        IconButton(
-                            onClick = { viewModel.toggleBookmarksView() },
-                            modifier = Modifier.testTag("top_bar_bookmarks_button")
-                        ) {
-                            BadgedBox(
-                                badge = {
-                                    if (uiState.bookmarkedArticles.isNotEmpty()) {
-                                        Badge {
-                                            Text(text = "${uiState.bookmarkedArticles.size}")
-                                        }
-                                    }
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = if (uiState.isBookmarksView) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                                    contentDescription = "Bookmarks",
-                                    tint = if (uiState.isBookmarksView) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
-
-                        // Refresh Button
-                        IconButton(
-                            onClick = { viewModel.refreshCurrentSection() },
-                            enabled = !uiState.isRefreshing,
-                            modifier = Modifier.testTag("top_bar_refresh_button")
-                        ) {
-                            if (uiState.isRefreshing) {
-                                CircularProgressIndicator(
-                                    strokeWidth = 2.dp,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = "Refresh",
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
-
-                        // Admin Access Approvals Button (Visible to Admin)
-                        if (uiState.currentUserRole == UserRole.ADMIN) {
-                            val pendingApprovalsCount = uiState.pendingAccessRequests.count { it.status == com.example.data.model.AccessStatus.PENDING }
-                            IconButton(
-                                onClick = { viewModel.setAdminPanelOpen(true) },
-                                modifier = Modifier.testTag("top_bar_admin_button")
-                            ) {
-                                BadgedBox(
-                                    badge = {
-                                        if (pendingApprovalsCount > 0) {
-                                            Badge(containerColor = MaterialTheme.colorScheme.error) {
-                                                Text(text = "$pendingApprovalsCount")
-                                            }
-                                        }
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.AdminPanelSettings,
-                                        contentDescription = "Access Approvals Panel",
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-                        }
-
-                        // Sign Out Button
-                        IconButton(
-                            onClick = { viewModel.signOut() },
-                            modifier = Modifier.testTag("top_bar_sign_out_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ExitToApp,
-                                contentDescription = "Sign Out",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
                     )
                 )
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
 
                 // App Sections Navigation Bar (Always visible after login across the 5 options)
                 AppSectionNavigationBar(
@@ -398,13 +281,90 @@ fun NewsScreen(
                                 onSelectFirm = { viewModel.selectAdvisoryFirm(it) }
                             )
                         }
-                        AppSection.FORTUNE_500, AppSection.LLM_RANKINGS -> {
-                            // Secondary bar not needed, dedicated controls inside view
+                        AppSection.FORTUNE_500 -> {
+                            val sectors = uiState.fortune500List.map { it.sector }.distinct().sorted()
+                            val selectedSector = uiState.fortune500SearchQuery.takeIf { query ->
+                                sectors.any { it.equals(query, ignoreCase = true) }
+                            }
+                            SectionFilterDropdown(
+                                label = "Select Fortune 500 Sector",
+                                allLabel = "All sectors",
+                                options = sectors,
+                                selectedOption = selectedSector,
+                                icon = Icons.Default.TrendingUp,
+                                testTagPrefix = "fortune_sector",
+                                onSelect = { viewModel.setFortune500SearchQuery(it.orEmpty()) }
+                            )
                         }
+                        AppSection.LLM_RANKINGS -> {
+                            val providers = uiState.llmRankingsList.map { it.provider }.distinct().sorted()
+                            val selectedProvider = uiState.llmSearchQuery.takeIf { query ->
+                                providers.any { it.equals(query, ignoreCase = true) }
+                            }
+                            SectionFilterDropdown(
+                                label = "Select LLM Provider",
+                                allLabel = "All providers",
+                                options = providers,
+                                selectedOption = selectedProvider,
+                                icon = Icons.Default.Leaderboard,
+                                testTagPrefix = "llm_provider",
+                                onSelect = { viewModel.setLlmSearchQuery(it.orEmpty()) }
+                            )
+                        }
+                        AppSection.LEARN -> Unit
                     }
                 }
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+            }
+        },
+        bottomBar = {
+            Surface(
+                modifier = Modifier.navigationBarsPadding(),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 3.dp,
+                shadowElevation = 8.dp
+            ) {
+                Column {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.22f))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { viewModel.openLandingScreen() }, modifier = Modifier.testTag("top_bar_landing_button")) {
+                            Icon(Icons.Default.GridView, "Kestrel overview", tint = if (uiState.isLandingScreenOpen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                        }
+                        IconButton(onClick = {
+                            isSearchActive = !isSearchActive
+                            if (!isSearchActive) viewModel.setSearchQuery("")
+                        }, modifier = Modifier.testTag("top_bar_search_button")) {
+                            Icon(if (isSearchActive) Icons.Default.Close else Icons.Default.Search, "Search")
+                        }
+                        IconButton(onClick = { viewModel.toggleBookmarksView() }, modifier = Modifier.testTag("top_bar_bookmarks_button")) {
+                            BadgedBox(badge = { if (uiState.bookmarkedArticles.isNotEmpty()) Badge { Text("${uiState.bookmarkedArticles.size}") } }) {
+                                Icon(if (uiState.isBookmarksView) Icons.Default.Bookmark else Icons.Default.BookmarkBorder, "Bookmarks")
+                            }
+                        }
+                        IconButton(onClick = { viewModel.refreshCurrentSection() }, enabled = !uiState.isRefreshing, modifier = Modifier.testTag("top_bar_refresh_button")) {
+                            if (uiState.isRefreshing) CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                            else Icon(Icons.Default.Refresh, "Refresh")
+                        }
+                        if (uiState.currentUserRole == UserRole.ADMIN) {
+                            val pendingApprovalsCount = uiState.pendingAccessRequests.count { it.status == com.example.data.model.AccessStatus.PENDING }
+                            IconButton(onClick = { viewModel.setAdminPanelOpen(true) }, modifier = Modifier.testTag("top_bar_admin_button")) {
+                                BadgedBox(badge = { if (pendingApprovalsCount > 0) Badge(containerColor = MaterialTheme.colorScheme.error) { Text("$pendingApprovalsCount") } }) {
+                                    Icon(Icons.Default.AdminPanelSettings, "Access Approvals Panel", tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
+                        IconButton(onClick = { viewModel.signOut() }, modifier = Modifier.testTag("top_bar_sign_out_button")) {
+                            Icon(Icons.Default.ExitToApp, "Sign Out", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
             }
         }
     ) { innerPadding ->
@@ -427,20 +387,17 @@ fun NewsScreen(
                         Fortune500View(
                             companies = uiState.filteredFortune500,
                             searchQuery = uiState.fortune500SearchQuery,
-                            onSearchChange = { viewModel.setFortune500SearchQuery(it) },
-                            isExporting = uiState.isSavingToSheets,
-                            onExportToSheets = { viewModel.exportFortune500ToSheets() }
+                            onSearchChange = { viewModel.setFortune500SearchQuery(it) }
                         )
                     }
                     AppSection.LLM_RANKINGS -> {
                         LlmRankingsView(
                             models = uiState.filteredLlmRankings,
                             searchQuery = uiState.llmSearchQuery,
-                            onSearchChange = { viewModel.setLlmSearchQuery(it) },
-                            isExporting = uiState.isSavingToSheets,
-                            onExportToSheets = { viewModel.exportLlmRankingsToSheets() }
+                            onSearchChange = { viewModel.setLlmSearchQuery(it) }
                         )
                     }
+                    AppSection.LEARN -> LearnView()
                     AppSection.AI_NEWS, AppSection.WORK_ACCOUNTS, AppSection.ADVISORY_FIRMS -> {
                         val displayedArticles = uiState.displayedArticles
 
@@ -613,7 +570,24 @@ fun NewsScreen(
                     selectedAccountIds = uiState.selectedWorkAccountIds,
                     onToggleAccount = { viewModel.toggleWorkAccountSelection(it) },
                     onAddCustomAccount = { viewModel.addCustomWorkAccount(it) },
+                    onDeleteAccount = { viewModel.deleteWorkAccount(it) },
                     onDismiss = { viewModel.setManageWorkAccountsDialogOpen(false) }
+                )
+            }
+
+            if (uiState.isSettingsPreferencesDialogOpen) {
+                SettingsPreferencesDialog(
+                    topics = uiState.topics,
+                    selectedTopic = uiState.selectedTopic,
+                    onSelectTopic = { viewModel.selectTopic(it) },
+                    onAddTopic = { name, query -> viewModel.addCustomTopic(name, query) },
+                    onDeleteTopic = { viewModel.deleteCustomTopic(it) },
+                    availableWorkAccounts = uiState.availableWorkAccounts,
+                    selectedWorkAccountIds = uiState.selectedWorkAccountIds,
+                    onToggleWorkAccount = { viewModel.toggleWorkAccountSelection(it) },
+                    onAddCustomWorkAccount = { viewModel.addCustomWorkAccount(it) },
+                    onDeleteWorkAccount = { viewModel.deleteWorkAccount(it) },
+                    onDismiss = { viewModel.setSettingsPreferencesDialogOpen(false) }
                 )
             }
 

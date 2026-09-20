@@ -14,6 +14,7 @@ class GoogleSheetsPreferences(context: Context) {
         private const val KEY_LAST_SAVED_URL = "sheets_last_saved_url"
         private const val KEY_SELECTED_WORK_ACCOUNTS = "selected_work_accounts_csv"
         private const val KEY_CUSTOM_WORK_ACCOUNTS = "custom_work_accounts_csv"
+        private const val KEY_DELETED_WORK_ACCOUNT_IDS = "deleted_work_account_ids_csv"
     }
 
     var spreadsheetId: String
@@ -39,6 +40,10 @@ class GoogleSheetsPreferences(context: Context) {
     var customWorkAccountsRaw: String
         get() = prefs.getString(KEY_CUSTOM_WORK_ACCOUNTS, "") ?: ""
         set(value) = prefs.edit().putString(KEY_CUSTOM_WORK_ACCOUNTS, value.trim()).apply()
+
+    var deletedWorkAccountIdsRaw: String
+        get() = prefs.getString(KEY_DELETED_WORK_ACCOUNT_IDS, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_DELETED_WORK_ACCOUNT_IDS, value.trim()).apply()
 
     val isConfigured: Boolean
         get() = accessToken.isNotBlank() || webhookUrl.isNotBlank() || spreadsheetId.isNotBlank()

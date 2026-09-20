@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Leaderboard
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.FilterChip
@@ -74,6 +75,7 @@ fun AppSectionNavigationBar(
                     AppSection.ADVISORY_FIRMS -> Icons.Default.Assessment
                     AppSection.FORTUNE_500 -> Icons.Default.TrendingUp
                     AppSection.LLM_RANKINGS -> Icons.Default.Leaderboard
+                    AppSection.LEARN -> Icons.Default.Lightbulb
                 }
 
                 Tab(

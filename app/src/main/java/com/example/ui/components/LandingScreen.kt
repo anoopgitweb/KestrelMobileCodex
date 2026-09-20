@@ -125,7 +125,7 @@ fun LandingScreen(
             ),
             LandingOptionItem(
                 section = AppSection.WORK_ACCOUNTS,
-                title = "Work Accounts News",
+                title = "Work Accounts",
                 subtitle = "Customized enterprise intelligence for your prioritized accounts and corporate clients.",
                 tag = "$monitoredAccountsCount MONITORED",
                 icon = Icons.Default.Business,
@@ -134,7 +134,7 @@ fun LandingScreen(
             ),
             LandingOptionItem(
                 section = AppSection.ADVISORY_FIRMS,
-                title = "News from Advisory Firms",
+                title = "Advisor Insights",
                 subtitle = "Market wave analyses, quadrants, and strategic forecasts from top industry advisories.",
                 tag = "FORRESTER & EVEREST",
                 icon = Icons.Default.Lightbulb,
@@ -158,6 +158,15 @@ fun LandingScreen(
                 icon = Icons.Default.Leaderboard,
                 gradientColors = listOf(Color(0xFF9333EA), Color(0xFF7E22CE)),
                 highlightDetail = "LMSYS Arena • MMLU • Context windows • Pricing"
+            ),
+            LandingOptionItem(
+                section = AppSection.LEARN,
+                title = "Learn & Discover",
+                subtitle = "Concise AI explainers, executive playbooks, and practical learning paths.",
+                tag = "BUILD AI FLUENCY",
+                icon = Icons.Default.Lightbulb,
+                gradientColors = listOf(Color(0xFF0F766E), Color(0xFF115E59)),
+                highlightDetail = "Foundations • LLM selection • Prompting • Governance"
             )
         )
     }
@@ -303,15 +312,17 @@ fun LandingScreen(
                                         }
                                     }
                                     Spacer(modifier = Modifier.width(14.dp))
-                                    Column {
+                                    Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = "Intelligence Hub",
-                                            style = MaterialTheme.typography.headlineSmall,
+                                            text = "Kestrel Executive Intelligence",
+                                            style = MaterialTheme.typography.titleLarge,
                                             fontWeight = FontWeight.ExtraBold,
-                                            color = MaterialTheme.colorScheme.onSurface
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            lineHeight = 26.sp,
+                                            maxLines = 2
                                         )
                                         Text(
-                                            text = "Select a channel to explore",
+                                            text = "Your executive intelligence hub",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )

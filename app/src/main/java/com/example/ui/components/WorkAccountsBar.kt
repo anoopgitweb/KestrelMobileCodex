@@ -2,44 +2,18 @@ package com.example.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -53,82 +27,72 @@ fun WorkAccountsBar(
     onOpenManageDialog: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Business,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.size(8.dp))
-                    Text(
-                        text = "Your Work Accounts (${selectedAccountIds.size} Active)",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+    var expanded by remember { mutableStateOf(false) }
+    val selectedNames = accounts.filter { it.id in selectedAccountIds }.map { it.name }
+    val summary = when (selectedNames.size) {
+        0 -> "No work accounts selected"
+        1 -> selectedNames.first()
+        else -> "${selectedNames.size} work accounts selected"
+    }
 
-                TextButton(
-                    onClick = onOpenManageDialog,
-                    modifier = Modifier.testTag("manage_work_accounts_button")
+    Surface(color = MaterialTheme.colorScheme.surface, modifier = modifier.fillMaxWidth()) {
+        Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                modifier = Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(12.dp))
+                    .clickable { expanded = true }.testTag("work_accounts_dropdown_trigger")
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Tune,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.size(4.dp))
-                    Text("Preferences", style = MaterialTheme.typography.labelMedium)
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Icon(Icons.Default.Business, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text(summary, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    }
+                    Icon(Icons.Default.ArrowDropDown, "Open work accounts dropdown")
                 }
             }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.fillMaxWidth(0.9f).background(MaterialTheme.colorScheme.surface)
+                    .testTag("work_accounts_dropdown_menu")
             ) {
-                items(accounts, key = { it.id }) { account ->
-                    val isSelected = selectedAccountIds.contains(account.id)
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { onToggleAccount(account.id) },
-                        label = {
-                            Text(
-                                text = account.name,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        leadingIcon = if (isSelected) {
-                            {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Select Work Accounts", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text("${selectedAccountIds.size} selected", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                HorizontalDivider()
+                accounts.forEach { account ->
+                    val selected = account.id in selectedAccountIds
+                    DropdownMenuItem(
+                        leadingIcon = { Checkbox(checked = selected, onCheckedChange = null) },
+                        text = {
+                            Column {
+                                Text(account.name, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+                                Text(account.industry, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                        } else null,
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                        },
+                        onClick = { onToggleAccount(account.id) },
+                        modifier = Modifier.testTag("work_account_item_${account.id}")
                     )
                 }
+                HorizontalDivider()
+                DropdownMenuItem(
+                    leadingIcon = { Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.primary) },
+                    text = { Text("Manage accounts…", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold) },
+                    onClick = { expanded = false; onOpenManageDialog() },
+                    modifier = Modifier.testTag("manage_work_accounts_button")
+                )
             }
         }
     }
@@ -140,96 +104,48 @@ fun ManageWorkAccountsDialog(
     selectedAccountIds: Set<String>,
     onToggleAccount: (String) -> Unit,
     onAddCustomAccount: (String) -> Unit,
+    onDeleteAccount: (WorkAccount) -> Unit,
     onDismiss: () -> Unit
 ) {
     var newAccountName by remember { mutableStateOf("") }
-
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Tune,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.size(8.dp))
-                Text("Work Accounts Preferences", fontWeight = FontWeight.Bold)
-            }
-        },
+        title = { Text("Work Accounts Preferences", fontWeight = FontWeight.Bold) },
         text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(340.dp)
-            ) {
-                Text(
-                    text = "Select which enterprise accounts to monitor for news updates & export to your 'Work Accounts' Google Sheets tab:",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            Column(Modifier.fillMaxWidth().height(340.dp)) {
+                OutlinedTextField(
+                    value = newAccountName,
+                    onValueChange = { newAccountName = it },
+                    placeholder = { Text("Add custom company or client") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Custom account input
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = newAccountName,
-                        onValueChange = { newAccountName = it },
-                        placeholder = { Text("Add custom company/client") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f)
-                    )
-                    Spacer(modifier = Modifier.size(8.dp))
-                    Button(
-                        onClick = {
-                            if (newAccountName.isNotBlank()) {
-                                onAddCustomAccount(newAccountName.trim())
-                                newAccountName = ""
-                            }
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        enabled = newAccountName.isNotBlank()
-                    ) {
-                        Text("Add")
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                androidx.compose.foundation.lazy.LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    items(availableAccounts, key = { it.id }) { acc ->
-                        val isChecked = selectedAccountIds.contains(acc.id)
+                Button(
+                    onClick = { onAddCustomAccount(newAccountName.trim()); newAccountName = "" },
+                    enabled = newAccountName.isNotBlank(),
+                    modifier = Modifier.padding(top = 8.dp).align(Alignment.End)
+                ) { Text("Add account") }
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.foundation.lazy.LazyColumn(Modifier.weight(1f)) {
+                    items(availableAccounts.size) { index ->
+                        val account = availableAccounts[index]
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { onToggleAccount(acc.id) }
-                                .padding(vertical = 4.dp, horizontal = 4.dp)
+                            Modifier.fillMaxWidth().clickable { onToggleAccount(account.id) }.padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Checkbox(
-                                checked = isChecked,
-                                onCheckedChange = { onToggleAccount(acc.id) }
-                            )
-                            Spacer(modifier = Modifier.size(8.dp))
+                            Checkbox(account.id in selectedAccountIds, onCheckedChange = { onToggleAccount(account.id) })
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = acc.name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Text(
-                                    text = acc.industry,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                Text(account.name, fontWeight = FontWeight.SemiBold)
+                                Text(account.industry, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            IconButton(
+                                onClick = { onDeleteAccount(account) },
+                                modifier = Modifier.testTag("manage_delete_work_account_${account.id}")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete ${account.name}",
+                                    tint = MaterialTheme.colorScheme.error
                                 )
                             }
                         }
@@ -237,10 +153,6 @@ fun ManageWorkAccountsDialog(
                 }
             }
         },
-        confirmButton = {
-            Button(onClick = onDismiss) {
-                Text("Done")
-            }
-        }
+        confirmButton = { Button(onClick = onDismiss) { Text("Done") } }
     )
 }

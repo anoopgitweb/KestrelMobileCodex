@@ -24,9 +24,11 @@ enum class UserRole(val title: String) {
 }
 
 data class AuthUser(
+    val id: String = "",
     val email: String,
     val fullName: String = "",
     val role: UserRole = UserRole.USER,
     val status: AccessStatus = AccessStatus.NONE,
-    val accessToken: String? = null
+    val accessToken: String? = null,
+    val refreshToken: String? = null
 )

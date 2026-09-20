@@ -79,8 +79,7 @@ fun SettingsPreferencesDialog(
     selectedWorkAccountIds: Set<String>,
     onToggleWorkAccount: (String) -> Unit,
     onAddCustomWorkAccount: (String) -> Unit,
-    onOpenSheetsConfig: () -> Unit,
-    onOpenSupabaseConfig: () -> Unit,
+    onDeleteWorkAccount: (WorkAccount) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -143,7 +142,7 @@ fun SettingsPreferencesDialog(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Navigation Tabs inside Settings: AI News Topics | Work Accounts | Integrations
+            // Navigation tabs for all user-editable content preferences.
             TabRow(
                 selectedTabIndex = selectedTabIndex,
                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -182,21 +181,6 @@ fun SettingsPreferencesDialog(
                         }
                     }
                 )
-                Tab(
-                    selected = selectedTabIndex == 2,
-                    onClick = { selectedTabIndex = 2 },
-                    text = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.Tune,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Integrations", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                        }
-                    }
-                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -219,17 +203,8 @@ fun SettingsPreferencesDialog(
                         availableAccounts = availableWorkAccounts,
                         selectedAccountIds = selectedWorkAccountIds,
                         onToggleAccount = onToggleWorkAccount,
-                        onAddCustomAccount = onAddCustomWorkAccount
-                    )
-                    2 -> IntegrationsPreferencesTab(
-                        onOpenSheetsConfig = {
-                            onDismiss()
-                            onOpenSheetsConfig()
-                        },
-                        onOpenSupabaseConfig = {
-                            onDismiss()
-                            onOpenSupabaseConfig()
-                        }
+                        onAddCustomAccount = onAddCustomWorkAccount,
+                        onDeleteAccount = onDeleteWorkAccount
                     )
                 }
             }
@@ -428,7 +403,8 @@ private fun WorkAccountsPreferencesTab(
     availableAccounts: List<WorkAccount>,
     selectedAccountIds: Set<String>,
     onToggleAccount: (String) -> Unit,
-    onAddCustomAccount: (String) -> Unit
+    onAddCustomAccount: (String) -> Unit,
+    onDeleteAccount: (WorkAccount) -> Unit
 ) {
     val scrollState = rememberScrollState()
     var newAccountName by remember { mutableStateOf("") }
@@ -520,6 +496,17 @@ private fun WorkAccountsPreferencesTab(
                             text = acc.industry,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(
+                        onClick = { onDeleteAccount(acc) },
+                        modifier = Modifier.size(36.dp).testTag("delete_work_account_${acc.id}")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete ${acc.name}",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }

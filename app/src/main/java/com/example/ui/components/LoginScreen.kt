@@ -83,18 +83,67 @@ fun LoginScreen(
     errorMessage: String?,
     successMessage: String?,
     currentAccessStatus: AccessStatus,
-    onLogin: (String, String) -> Unit,
+    pinUnlockAvailable: Boolean,
+    savedEmail: String,
+    onLogin: (String, String, String) -> Unit,
+    onPinUnlock: (String) -> Unit,
     onRequestAccess: (fullName: String, email: String, org: String, reason: String) -> Unit,
     onOpenSupabaseConfig: () -> Unit,
     onClearMessages: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var pin by remember { mutableStateOf("") }
+    if (pinUnlockAvailable) {
+        Box(
+            modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerLow),
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(42.dp))
+                    Spacer(Modifier.height(12.dp))
+                    Text("Welcome back", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(savedEmail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(20.dp))
+                    OutlinedTextField(
+                        value = pin,
+                        onValueChange = { value -> if (value.length <= 4 && value.all(Char::isDigit)) pin = value },
+                        label = { Text("4-digit PIN") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { if (pin.length == 4) onPinUnlock(pin) }),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("pin_unlock_input")
+                    )
+                    if (errorMessage != null) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(errorMessage, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Button(
+                        onClick = { onPinUnlock(pin) },
+                        enabled = pin.length == 4,
+                        modifier = Modifier.fillMaxWidth().height(50.dp).testTag("pin_unlock_button")
+                    ) { Text("Unlock", fontWeight = FontWeight.Bold) }
+                }
+            }
+        }
+        return
+    }
     var selectedTab by remember { mutableIntStateOf(if (currentAccessStatus == AccessStatus.PENDING) 1 else 0) }
     val focusManager = LocalFocusManager.current
 
     // Login Form State
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var setupPin by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(false) }
 
     // Request Access Form State
@@ -341,7 +390,7 @@ fun LoginScreen(
                         keyboardActions = KeyboardActions(
                             onDone = {
                                 focusManager.clearFocus()
-                                onLogin(email, password)
+                                onLogin(email, password, setupPin)
                             }
                         ),
                         modifier = Modifier
@@ -356,12 +405,26 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
+                    OutlinedTextField(
+                        value = setupPin,
+                        onValueChange = { value -> if (value.length <= 4 && value.all(Char::isDigit)) setupPin = value },
+                        label = { Text("Create 4-digit quick login PIN") },
+                        placeholder = { Text("Required for quick login") },
+                        leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) },
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
+                        modifier = Modifier.fillMaxWidth().testTag("login_pin_input")
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
                     Button(
                         onClick = {
                             focusManager.clearFocus()
-                            onLogin(email, password)
+                            onLogin(email, password, setupPin)
                         },
-                        enabled = !isLoading && email.isNotBlank() && password.isNotBlank(),
+                        enabled = !isLoading && email.isNotBlank() && password.isNotBlank() && setupPin.length == 4,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp)

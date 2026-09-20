@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">AI News</string>
+    <string name="intro_brand">KESTREL / IQ</string>
+    <string name="intro_title">Kestrel Executive\nIntelligence</string>
+    <string name="intro_caption">Intelligence at your fingertips.</string>
+    <string name="intro_description">Discover the ideas, companies and breakthroughs shaping your world.</string>
+    <string name="intro_explore">Explore</string>
+    <string name="intro_footer">A wider perspective. A sharper focus.</string>
 </resources>

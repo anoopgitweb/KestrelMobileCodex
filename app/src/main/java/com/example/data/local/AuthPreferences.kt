@@ -2,6 +2,10 @@ package com.example.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Base64
+import java.security.SecureRandom
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
 
 class AuthPreferences(context: Context) {
     private val prefs: SharedPreferences =
@@ -14,6 +18,10 @@ class AuthPreferences(context: Context) {
         private const val KEY_USER_ROLE = "auth_user_role" // "admin" or "user"
         private const val KEY_ACCESS_STATUS = "auth_access_status" // "APPROVED", "PENDING", "REJECTED", "NONE"
         private const val KEY_ACCESS_TOKEN = "auth_access_token"
+        private const val KEY_REFRESH_TOKEN = "auth_refresh_token"
+        private const val KEY_USER_ID = "auth_user_id"
+        private const val KEY_PIN_HASH = "auth_pin_hash"
+        private const val KEY_PIN_SALT = "auth_pin_salt"
         private const val KEY_REQUESTED_REASON = "auth_requested_reason"
         private const val KEY_IS_LOGGED_IN = "auth_is_logged_in"
         private const val KEY_ADMIN_APPROVED_EMAILS = "admin_approved_emails"
@@ -43,6 +51,40 @@ class AuthPreferences(context: Context) {
     var accessToken: String
         get() = prefs.getString(KEY_ACCESS_TOKEN, "") ?: ""
         set(value) = prefs.edit().putString(KEY_ACCESS_TOKEN, value).apply()
+
+    var refreshToken: String
+        get() = prefs.getString(KEY_REFRESH_TOKEN, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_REFRESH_TOKEN, value).apply()
+
+    var userId: String
+        get() = prefs.getString(KEY_USER_ID, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_USER_ID, value).apply()
+
+    val hasPin: Boolean get() = !prefs.getString(KEY_PIN_HASH, "").isNullOrBlank()
+
+    fun setPin(pin: String) {
+        require(pin.matches(Regex("\\d{4}"))) { "PIN must contain exactly four digits" }
+        val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
+        val hash = pinHash(pin, salt)
+        prefs.edit()
+            .putString(KEY_PIN_SALT, Base64.encodeToString(salt, Base64.NO_WRAP))
+            .putString(KEY_PIN_HASH, Base64.encodeToString(hash, Base64.NO_WRAP))
+            .apply()
+    }
+
+    fun verifyPin(pin: String): Boolean {
+        if (!pin.matches(Regex("\\d{4}"))) return false
+        val saltText = prefs.getString(KEY_PIN_SALT, "") ?: return false
+        val expectedText = prefs.getString(KEY_PIN_HASH, "") ?: return false
+        return try {
+            val actual = pinHash(pin, Base64.decode(saltText, Base64.NO_WRAP))
+            java.security.MessageDigest.isEqual(actual, Base64.decode(expectedText, Base64.NO_WRAP))
+        } catch (_: Exception) { false }
+    }
+
+    private fun pinHash(pin: String, salt: ByteArray): ByteArray =
+        SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+            .generateSecret(PBEKeySpec(pin.toCharArray(), salt, 120_000, 256)).encoded
 
     var requestedReason: String
         get() = prefs.getString(KEY_REQUESTED_REASON, "") ?: ""
@@ -84,6 +126,10 @@ class AuthPreferences(context: Context) {
             .remove(KEY_USER_ROLE)
             .remove(KEY_ACCESS_STATUS)
             .remove(KEY_ACCESS_TOKEN)
+            .remove(KEY_REFRESH_TOKEN)
+            .remove(KEY_USER_ID)
+            .remove(KEY_PIN_HASH)
+            .remove(KEY_PIN_SALT)
             .remove(KEY_REQUESTED_REASON)
             .putBoolean(KEY_IS_LOGGED_IN, false)
             .apply()

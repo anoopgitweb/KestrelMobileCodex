@@ -53,7 +53,10 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
         val customAccounts = customAccountNames.map { name ->
             WorkAccount("custom_${name.lowercase().replace(" ", "_")}", name, "", "Custom Work Account", true)
         }
-        val allAccounts = WorkAccount.DEFAULT_WORK_ACCOUNTS + customAccounts
+        val deletedAccountIds = sheetsPrefs.deletedWorkAccountIdsRaw
+            .split(",").map { it.trim() }.filter { it.isNotBlank() }.toSet()
+        val allAccounts = (WorkAccount.DEFAULT_WORK_ACCOUNTS + customAccounts)
+            .filterNot { it.id in deletedAccountIds }
         val selectedIds = allAccounts.filter { savedAccountNames.contains(it.name) }.map { it.id }.toSet()
 
         // Load saved session and role
@@ -65,7 +68,8 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
             if (savedRole == UserRole.ADMIN) AccessStatus.APPROVED else AccessStatus.NONE
         }
         val isApproved = savedRole == UserRole.ADMIN || (savedStatus == AccessStatus.APPROVED && authPrefs.isEmailApproved(savedEmail))
-        val isUserLoggedIn = authPrefs.isLoggedIn && isApproved
+        val pinUnlockAvailable = authService.hasPin() && isApproved
+        val isUserLoggedIn = authPrefs.isLoggedIn && isApproved && !pinUnlockAvailable
 
         // Load saved Sheets preferences & Auth state
         _uiState.update {
@@ -77,6 +81,7 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
                 availableWorkAccounts = allAccounts,
                 selectedWorkAccountIds = if (selectedIds.isNotEmpty()) selectedIds else allAccounts.take(5).map { a -> a.id }.toSet(),
                 isAuthenticated = isUserLoggedIn,
+                isPinUnlockAvailable = pinUnlockAvailable,
                 currentUserEmail = savedEmail,
                 currentUserRole = savedRole,
                 currentAccessStatus = if (isApproved) AccessStatus.APPROVED else savedStatus,
@@ -162,6 +167,9 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
             AppSection.LLM_RANKINGS -> {
                 // Benchmark view
             }
+            AppSection.LEARN -> {
+                // On-device learning library
+            }
         }
     }
 
@@ -188,6 +196,7 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
         }
         observeArticlesForTopic(topic)
         fetchNewsForTopic(topic, isPullToRefresh = false)
+        syncPreferencesToSupabase()
     }
 
     private fun observeArticlesForTopic(topic: Topic) {
@@ -215,6 +224,7 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
             AppSection.LLM_RANKINGS -> {
                 _uiState.update { it.copy(lastUpdatedIst = IstTimeUtil.formatToIstTimeOnly(System.currentTimeMillis())) }
             }
+            AppSection.LEARN -> Unit
         }
     }
 
@@ -268,6 +278,7 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
         sheetsPrefs.selectedWorkAccountsRaw = selectedNames
 
         _uiState.update { it.copy(selectedWorkAccountIds = currentIds) }
+        syncPreferencesToSupabase()
         fetchWorkAccountsNews(isPullToRefresh = false)
     }
 
@@ -286,6 +297,10 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
             industry = "Custom Work Account",
             isSelected = true
         )
+        val deletedIds = sheetsPrefs.deletedWorkAccountIdsRaw
+            .split(",").map { it.trim() }.filter { it.isNotBlank() }.toMutableSet()
+        deletedIds.remove(customAccount.id)
+        sheetsPrefs.deletedWorkAccountIdsRaw = deletedIds.joinToString(",")
         val updatedAccounts = _uiState.value.availableWorkAccounts + customAccount
         val updatedSelected = _uiState.value.selectedWorkAccountIds + customAccount.id
 
@@ -298,6 +313,35 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
                 selectedWorkAccountIds = updatedSelected
             )
         }
+        syncPreferencesToSupabase()
+        fetchWorkAccountsNews(isPullToRefresh = false)
+    }
+
+    fun deleteWorkAccount(account: WorkAccount) {
+        val updatedAccounts = _uiState.value.availableWorkAccounts.filterNot { it.id == account.id }
+        var updatedSelected = _uiState.value.selectedWorkAccountIds - account.id
+        if (updatedSelected.isEmpty()) {
+            updatedSelected = updatedAccounts.firstOrNull()?.let { setOf(it.id) } ?: emptySet()
+        }
+
+        sheetsPrefs.customWorkAccountsRaw = updatedAccounts
+            .filter { it.id.startsWith("custom_") }
+            .joinToString(",") { it.name }
+        val deletedIds = sheetsPrefs.deletedWorkAccountIdsRaw
+            .split(",").map { it.trim() }.filter { it.isNotBlank() }.toMutableSet()
+        deletedIds.add(account.id)
+        sheetsPrefs.deletedWorkAccountIdsRaw = deletedIds.joinToString(",")
+        sheetsPrefs.selectedWorkAccountsRaw = updatedAccounts
+            .filter { it.id in updatedSelected }
+            .joinToString(",") { it.name }
+
+        _uiState.update {
+            it.copy(
+                availableWorkAccounts = updatedAccounts,
+                selectedWorkAccountIds = updatedSelected
+            )
+        }
+        syncPreferencesToSupabase()
         fetchWorkAccountsNews(isPullToRefresh = false)
     }
 
@@ -573,17 +617,19 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // Supabase Auth & Role-Based Access Control Actions
-    fun loginWithSupabase(email: String, password: String, onResult: ((Boolean, String) -> Unit)? = null) {
+    fun loginWithSupabase(email: String, password: String, pin: String, onResult: ((Boolean, String) -> Unit)? = null) {
         viewModelScope.launch {
             _uiState.update { it.copy(isAuthLoading = true, authErrorMessage = null, authSuccessMessage = null) }
             val result = authService.signIn(email, password)
             if (result.isSuccess) {
                 val user = result.getOrThrow()
+                if (pin.isNotBlank()) authService.savePin(pin)
                 val isApproved = user.role == UserRole.ADMIN || user.status == AccessStatus.APPROVED
                 _uiState.update {
                     it.copy(
                         isAuthLoading = false,
                         isAuthenticated = isApproved,
+                        isPinUnlockAvailable = authService.hasPin(),
                         currentUserEmail = user.email,
                         currentUserRole = user.role,
                         currentAccessStatus = user.status,
@@ -601,12 +647,60 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
                 if (user.role == UserRole.ADMIN) {
                     loadAdminRequests()
                 }
+                loadPreferencesFromSupabase()
 
                 onResult?.invoke(isApproved, if (isApproved) "Success" else "Access requires Administrator approval")
             } else {
                 val err = result.exceptionOrNull()?.message ?: "Authentication failed"
                 _uiState.update { it.copy(isAuthLoading = false, authErrorMessage = err) }
                 onResult?.invoke(false, err)
+            }
+        }
+    }
+
+    fun unlockWithPin(pin: String) {
+        val unlocked = authService.unlockWithPin(pin)
+        _uiState.update {
+            it.copy(
+                isAuthenticated = unlocked,
+                authErrorMessage = if (unlocked) null else "Incorrect PIN. Please try again.",
+                authSuccessMessage = null
+            )
+        }
+        if (unlocked) loadPreferencesFromSupabase()
+    }
+
+    private fun syncPreferencesToSupabase() {
+        if (!_uiState.value.isAuthenticated) return
+        viewModelScope.launch {
+            authService.savePreferences(
+                SupabaseAuthService.CloudPreferences(
+                    selectedTopicId = _uiState.value.selectedTopic?.id.orEmpty(),
+                    selectedWorkAccounts = sheetsPrefs.selectedWorkAccountsRaw,
+                    customWorkAccounts = sheetsPrefs.customWorkAccountsRaw,
+                    deletedWorkAccountIds = sheetsPrefs.deletedWorkAccountIdsRaw
+                )
+            )
+        }
+    }
+
+    private fun loadPreferencesFromSupabase() {
+        viewModelScope.launch {
+            val cloud = authService.loadPreferences().getOrNull() ?: return@launch
+            sheetsPrefs.selectedWorkAccountsRaw = cloud.selectedWorkAccounts
+            sheetsPrefs.customWorkAccountsRaw = cloud.customWorkAccounts
+            sheetsPrefs.deletedWorkAccountIdsRaw = cloud.deletedWorkAccountIds
+            val customAccounts = cloud.customWorkAccounts.split(",").map { it.trim() }.filter { it.isNotBlank() }
+                .map { name -> WorkAccount("custom_${name.lowercase().replace(" ", "_")}", name, "", "Custom Work Account", true) }
+            val deletedIds = cloud.deletedWorkAccountIds.split(",").map { it.trim() }.filter { it.isNotBlank() }.toSet()
+            val accounts = (WorkAccount.DEFAULT_WORK_ACCOUNTS + customAccounts).distinctBy { it.id }.filterNot { it.id in deletedIds }
+            val selectedNames = cloud.selectedWorkAccounts.split(",").map { it.trim() }.filter { it.isNotBlank() }.toSet()
+            _uiState.update { state ->
+                state.copy(
+                    availableWorkAccounts = accounts,
+                    selectedWorkAccountIds = accounts.filter { it.name in selectedNames }.map { it.id }.toSet(),
+                    selectedTopic = state.topics.firstOrNull { it.id == cloud.selectedTopicId } ?: state.selectedTopic
+                )
             }
         }
     }
@@ -683,6 +777,7 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update {
             it.copy(
                 isAuthenticated = false,
+                isPinUnlockAvailable = false,
                 currentUserEmail = "",
                 currentUserRole = UserRole.USER,
                 currentAccessStatus = AccessStatus.NONE,
@@ -698,4 +793,3 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(authErrorMessage = null, authSuccessMessage = null) }
     }
 }
-

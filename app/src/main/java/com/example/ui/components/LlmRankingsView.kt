@@ -53,12 +53,8 @@ fun LlmRankingsView(
     models: List<LlmModelRanking>,
     searchQuery: String,
     onSearchChange: (String) -> Unit,
-    isExporting: Boolean,
-    onExportToSheets: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -93,7 +89,7 @@ fun LlmRankingsView(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Chatbot Arena Elo, MMLU, Context & Pricing",
+                                text = "Current intelligence leaders • Updated ${LlmModelRanking.DATA_AS_OF}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -101,61 +97,6 @@ fun LlmRankingsView(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = onExportToSheets,
-                        enabled = !isExporting,
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = GoogleSheetsGreen,
-                            contentColor = Color.White
-                        ),
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("export_llm_rankings_sheets_button")
-                    ) {
-                        if (isExporting) {
-                            CircularProgressIndicator(
-                                color = Color.White,
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Exporting...", fontSize = 13.sp)
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.TableChart,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Save to 'LLM Rankings' Sheet", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-
-                    OutlinedButton(
-                        onClick = {
-                            val tsv = buildString {
-                                appendLine("Rank\tModel Name\tProvider\tChatbot Arena Elo\tMMLU Score\tCoding Score\tContext Window\tCost / 1M Input\tCost / 1M Output\tStrengths\tLicense")
-                                for (m in models) {
-                                    appendLine("${m.rank}\t${m.modelName}\t${m.provider}\t${m.arenaElo}\t${m.mmluScore}%\t${m.codingScore}%\t${m.contextWindowTokens}\t$${m.costPerMillionInputTokens}\t$${m.costPerMillionOutputTokens}\t${m.strengths}\t${m.license}")
-                                }
-                            }
-                            copyTsv(context, tsv, "LLM Rankings copied for Sheets!")
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.testTag("copy_llm_rankings_tsv_button")
-                    ) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Copy TSV", fontSize = 13.sp)
-                    }
-                }
             }
         }
 
@@ -165,12 +106,14 @@ fun LlmRankingsView(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchChange,
-            placeholder = { Text("Search by model name, provider (Google, OpenAI...)...") },
+            placeholder = { Text("Search models or providers", style = MaterialTheme.typography.bodySmall) },
+            textStyle = MaterialTheme.typography.bodySmall,
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier
                 .fillMaxWidth()
+                .height(48.dp)
                 .testTag("llm_rankings_search_input")
         )
 
@@ -205,7 +148,10 @@ fun LlmModelCard(model: LlmModelRanking) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Surface(
                         shape = RoundedCornerShape(6.dp),
                         color = MaterialTheme.colorScheme.primaryContainer,
@@ -221,7 +167,7 @@ fun LlmModelCard(model: LlmModelRanking) {
                         }
                     }
                     Spacer(modifier = Modifier.width(10.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = model.modelName,
                             style = MaterialTheme.typography.titleMedium,
@@ -235,30 +181,6 @@ fun LlmModelCard(model: LlmModelRanking) {
                     }
                 }
 
-                // Arena Elo Pill
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.size(12.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Elo: ${model.arenaElo}",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.tertiary
-                        )
-                    }
-                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -268,21 +190,17 @@ fun LlmModelCard(model: LlmModelRanking) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
-                    Text("MMLU Bench", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${model.mmluScore}%", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Intelligence Index", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("${model.arenaElo}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                 }
-                Column {
-                    Text("Coding Bench", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${model.codingScore}%", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                Column(modifier = Modifier.weight(1.35f)) {
+                    Text("Updated", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(LlmModelRanking.DATA_AS_OF, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 }
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text("Context Window", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(model.contextWindowTokens, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                }
-                Column {
-                    Text("Input / Output", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$${model.costPerMillionInputTokens} / $${model.costPerMillionOutputTokens}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 }
             }
 

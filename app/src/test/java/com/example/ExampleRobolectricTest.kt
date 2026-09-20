@@ -16,6 +16,18 @@ class ExampleRobolectricTest {
   fun `read string from context`() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     val appName = context.getString(R.string.app_name)
-    assertEquals("AI News", appName)
+    assertEquals("Kestrel Intelligence Preview", appName)
+  }
+
+  @Test
+  fun `four digit pin is salted and verified locally`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val preferences = com.example.data.local.AuthPreferences(context)
+    preferences.clearSession()
+    preferences.setPin("4826")
+
+    assertEquals(true, preferences.verifyPin("4826"))
+    assertEquals(false, preferences.verifyPin("4825"))
+    assertEquals(false, preferences.verifyPin("48261"))
   }
 }

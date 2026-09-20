@@ -18,6 +18,12 @@ import java.util.concurrent.TimeUnit
 class SupabaseAuthService(
     private val authPrefs: AuthPreferences
 ) {
+    data class CloudPreferences(
+        val selectedTopicId: String,
+        val selectedWorkAccounts: String,
+        val customWorkAccounts: String,
+        val deletedWorkAccountIds: String
+    )
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
@@ -33,9 +39,7 @@ class SupabaseAuthService(
         return clean == adminEmail || clean == "admin@enterprise.ai" || clean.startsWith("admin@")
     }
 
-    /**
-     * Authenticate or register with Supabase Auth (or seamlessly fallback to direct access control)
-     */
+    /** Authenticate against Supabase. Authentication never falls back to local credentials. */
     suspend fun signIn(email: String, password: String): Result<AuthUser> = withContext(Dispatchers.IO) {
         try {
             val cleanEmail = email.trim().lowercase()
@@ -48,41 +52,36 @@ class SupabaseAuthService(
             val supabaseUrl = authPrefs.supabaseUrl.trim().removeSuffix("/")
             val anonKey = authPrefs.supabaseAnonKey.trim()
 
-            var token: String? = null
-
-            // If Supabase credentials are configured, authenticate against Supabase Auth API
-            if (supabaseUrl.isNotBlank() && anonKey.isNotBlank()) {
-                try {
-                    val authBody = JSONObject().apply {
-                        put("email", cleanEmail)
-                        put("password", cleanPass)
-                    }.toString()
-
-                    val request = Request.Builder()
-                        .url("$supabaseUrl/auth/v1/token?grant_type=password")
-                        .addHeader("apikey", anonKey)
-                        .addHeader("Content-Type", "application/json")
-                        .post(authBody.toRequestBody(jsonMediaType))
-                        .build()
-
-                    client.newCall(request).execute().use { response ->
-                        if (response.isSuccessful) {
-                            val resBody = response.body?.string().orEmpty()
-                            val json = JSONObject(resBody)
-                            token = json.optString("access_token", null)
-                        } else {
-                            val errBody = response.body?.string().orEmpty()
-                            // If user doesn't exist on Supabase, attempt auto-signup
-                            if (response.code == 400 && errBody.contains("Invalid login credentials", ignoreCase = true)) {
-                                val signupResult = signUpSupabase(supabaseUrl, anonKey, cleanEmail, cleanPass)
-                                token = signupResult.getOrNull()
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    // Fall back to local verification if network or server issue
-                }
+            if (supabaseUrl.isBlank() || anonKey.isBlank()) {
+                return@withContext Result.failure(IllegalStateException("Configure Supabase before signing in"))
             }
+
+            val authBody = JSONObject().apply {
+                put("email", cleanEmail)
+                put("password", cleanPass)
+            }.toString()
+            val request = Request.Builder()
+                .url("$supabaseUrl/auth/v1/token?grant_type=password")
+                .addHeader("apikey", anonKey)
+                .addHeader("Content-Type", "application/json")
+                .post(authBody.toRequestBody(jsonMediaType))
+                .build()
+
+            val authJson = client.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                if (!response.isSuccessful) {
+                    val message = runCatching { JSONObject(body).optString("msg") }.getOrNull()
+                    throw IllegalArgumentException(message?.takeIf { it.isNotBlank() } ?: "Invalid email or password")
+                }
+                JSONObject(body)
+            }
+            val token = authJson.getString("access_token")
+            val refreshToken = authJson.optString("refresh_token")
+            val authUser = authJson.getJSONObject("user")
+            val userId = authUser.getString("id")
+            val metadata = authUser.optJSONObject("user_metadata")
+            val fullName = metadata?.optString("full_name")?.takeIf { it.isNotBlank() }
+                ?: cleanEmail.substringBefore("@").replace(".", " ").capitalizeWords()
 
             // Determine role & approval status
             val role = if (isAdmin(cleanEmail)) UserRole.ADMIN else UserRole.USER
@@ -95,25 +94,54 @@ class SupabaseAuthService(
             }
 
             val user = AuthUser(
+                id = userId,
                 email = cleanEmail,
-                fullName = cleanEmail.substringBefore("@").replace(".", " ").capitalizeWords(),
+                fullName = fullName,
                 role = role,
                 status = accessStatus,
-                accessToken = token
+                accessToken = token,
+                refreshToken = refreshToken
             )
 
             // Cache session
             authPrefs.userEmail = cleanEmail
             authPrefs.userRole = if (role == UserRole.ADMIN) "admin" else "user"
             authPrefs.accessStatus = accessStatus.name
-            authPrefs.accessToken = token ?: ""
+            authPrefs.userId = userId
+            authPrefs.accessToken = token
+            authPrefs.refreshToken = refreshToken
             authPrefs.isLoggedIn = true
+
+            upsertProfile(user)
 
             Result.success(user)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
+
+    private fun upsertProfile(user: AuthUser) {
+        val body = JSONObject().apply {
+            put("id", user.id)
+            put("email", user.email)
+            put("full_name", user.fullName)
+        }.toString()
+        val request = Request.Builder()
+            .url("${authPrefs.supabaseUrl.trim().removeSuffix("/")}/rest/v1/profiles")
+            .addHeader("apikey", authPrefs.supabaseAnonKey)
+            .addHeader("Authorization", "Bearer ${user.accessToken}")
+            .addHeader("Prefer", "resolution=merge-duplicates")
+            .addHeader("Content-Type", "application/json")
+            .post(body.toRequestBody(jsonMediaType))
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) error("Unable to save user profile")
+        }
+    }
+
+    fun savePin(pin: String) = authPrefs.setPin(pin)
+    fun hasPin(): Boolean = authPrefs.hasPin && authPrefs.isLoggedIn && authPrefs.accessToken.isNotBlank()
+    fun unlockWithPin(pin: String): Boolean = hasPin() && authPrefs.verifyPin(pin)
 
     private fun signUpSupabase(supabaseUrl: String, anonKey: String, email: String, pass: String): Result<String?> {
         return try {
@@ -133,7 +161,7 @@ class SupabaseAuthService(
                 if (response.isSuccessful) {
                     val res = response.body?.string().orEmpty()
                     val json = JSONObject(res)
-                    Result.success(json.optString("access_token", null))
+                    Result.success(json.optString("access_token").takeIf { it.isNotBlank() })
                 } else {
                     Result.success(null)
                 }
@@ -390,6 +418,51 @@ class SupabaseAuthService(
             array.put(obj)
         }
         authPrefs.pendingRequestsRaw = array.toString()
+    }
+
+    suspend fun savePreferences(preferences: CloudPreferences): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            require(authPrefs.userId.isNotBlank() && authPrefs.accessToken.isNotBlank()) { "Sign in before saving preferences" }
+            val body = JSONObject().apply {
+                put("user_id", authPrefs.userId)
+                put("selected_topic_id", preferences.selectedTopicId)
+                put("selected_work_accounts", preferences.selectedWorkAccounts)
+                put("custom_work_accounts", preferences.customWorkAccounts)
+                put("deleted_work_account_ids", preferences.deletedWorkAccountIds)
+            }.toString()
+            val request = Request.Builder()
+                .url("${authPrefs.supabaseUrl.trim().removeSuffix("/")}/rest/v1/user_preferences")
+                .addHeader("apikey", authPrefs.supabaseAnonKey)
+                .addHeader("Authorization", "Bearer ${authPrefs.accessToken}")
+                .addHeader("Prefer", "resolution=merge-duplicates")
+                .addHeader("Content-Type", "application/json")
+                .post(body.toRequestBody(jsonMediaType))
+                .build()
+            client.newCall(request).execute().use { if (!it.isSuccessful) error("Unable to save preferences") }
+        }
+    }
+
+    suspend fun loadPreferences(): Result<CloudPreferences?> = withContext(Dispatchers.IO) {
+        runCatching {
+            if (authPrefs.userId.isBlank() || authPrefs.accessToken.isBlank()) return@runCatching null
+            val request = Request.Builder()
+                .url("${authPrefs.supabaseUrl.trim().removeSuffix("/")}/rest/v1/user_preferences?select=*&user_id=eq.${authPrefs.userId}&limit=1")
+                .addHeader("apikey", authPrefs.supabaseAnonKey)
+                .addHeader("Authorization", "Bearer ${authPrefs.accessToken}")
+                .get().build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) error("Unable to load preferences")
+                val rows = JSONArray(response.body?.string().orEmpty())
+                if (rows.length() == 0) null else rows.getJSONObject(0).let {
+                    CloudPreferences(
+                        selectedTopicId = it.optString("selected_topic_id"),
+                        selectedWorkAccounts = it.optString("selected_work_accounts"),
+                        customWorkAccounts = it.optString("custom_work_accounts"),
+                        deletedWorkAccountIds = it.optString("deleted_work_account_ids")
+                    )
+                }
+            }
+        }
     }
 
     fun signOut() {
