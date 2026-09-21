@@ -151,7 +151,7 @@ async function generateWebResearchFallback(
       model: Deno.env.get("OPENAI_MODEL") || "gpt-4.1-mini",
       store: false,
       tools: [{ type: "web_search" }],
-      instructions: "You are Kestrel Intelligence. This is a web research fallback because the selected publisher article could not be read. Search for multiple recent, credible sources about the exact story. Never treat the headline as confirmed fact without evidence. Clearly separate verified reporting from inference, mention disagreements, and include source links/citations. Begin with 'Coverage: Web research'. If there is not enough reliable reporting, return an empty response.",
+      instructions: "You are Kestrel Intelligence. This is a web research fallback because the selected publisher article could not be read. Search broadly using the headline, description, named people, companies, and distinctive phrases. Prefer multiple recent, credible sources, but do not fail merely because the exact headline is not repeated. Never treat the headline as confirmed fact without evidence. Clearly separate verified reporting from inference, mention disagreements, state when evidence is limited, and include source links/citations. Begin with 'Coverage: Web research'. Always return a useful cautious briefing when any relevant reporting is found; return empty only when no relevant reporting can be found at all.",
       input: `${request}\n\nHeadline: ${title}\nPublisher: ${clean(source, 200)}\nPublished: ${clean(publishedAt, 200)}\nArticle URL: ${url}\nDescription: ${description || "Not supplied"}`,
       max_output_tokens: action === "summary" ? 900 : 1800,
     }),
